@@ -12,6 +12,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSurvey, setShowSurvey] = useState(true);
+  const [contexts, setContexts] = useState<string[]>([]);
 
   async function handleSend() {
     const text = input.trim();
@@ -25,7 +26,7 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ messages: [...messages, userMsg], context: contexts }),
       });
       const data = await res.json();
       const reply = (data?.reply as string) || "";
@@ -97,7 +98,12 @@ export default function Home() {
       {/* 固定底部输入栏 */}
       <div className="fixed bottom-6 left-0 right-0 flex justify-center px-6">
         <div className="w-full max-w-3xl">
-          <ChatBar value={input} onChange={setInput} onSend={handleSend} />
+          <ChatBar
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            onContextChange={setContexts}
+          />
           {loading && (
             <p className="mt-2 text-center text-sm text-zinc-500">Thinking…</p>
           )}
