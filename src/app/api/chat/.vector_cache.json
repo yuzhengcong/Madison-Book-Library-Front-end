@@ -1,0 +1,62 @@
+{
+  "De Lolme -- The Constitution of England": {
+    "hash": "60d6a74644dc81344859ba05de8bee7788f7584f1b94c5c6c18ef9f39fe4bd8d",
+    "vectorStoreId": "vs_6916897677348191938f586138cf78f5",
+    "fileId": "file-FZWG4YS2nZp6FbK25L1y47"
+  },
+  "Filmer -- The Anarchy of a Limited or Mixed Monarchy": {
+    "hash": "c5241e1dbe945a1a8fed8801be0d5a2de009743fda28199f0ceb01d357992a15",
+    "vectorStoreId": "vs_6916897c36448191a0bf667024f5e35c",
+    "fileId": "file-Ds8xRcWPJXAVvEN5AHAcpr"
+  },
+  "Harrington -- The Commonwealth of Oceana": {
+    "hash": "78745903c3c077143177105243302a07a0c625aeca622123555f02ca8e389109",
+    "vectorStoreId": "vs_6916898123bc81918f119fb88d160b07",
+    "fileId": "file-ApmBBw9n783VqXRzzFxJuy"
+  },
+  "Hunton -- A Treatise of Monarchy": {
+    "hash": "80ae464c2e24eef6dd3821ac08b4f58aebfba1ef9d3087c42efe86ec13dbc0d2",
+    "vectorStoreId": "vs_6916898693f88191a8021492da9e0bf2",
+    "fileId": "file-XPKYwztKDJs6DZdbpVEkcn"
+  },
+  "Locke -- Second Treatise of Government": {
+    "hash": "66cc47d46cd60a5c83c1bed3b8855a24e429a0ad6e0221b4d9f0362ba6486cbd",
+    "vectorStoreId": "vs_6916898b25048191bd52182be58298f8",
+    "fileId": "file-JfGuSWbawgsz6npNTmtgdJ"
+  },
+  "Montesquieu -- spirit of laws": {
+    "hash": "11adb04cdb4f25602ef1618b0c996cae1f9f4f4f81f0c98881640529276aa283",
+    "vectorStoreId": "vs_6916898fd5b08191b95e47476f52fa85",
+    "fileId": "file-TprDjZym4qEKg8rMYEseFx"
+  },
+  "Rousseau -- The Social Contract": {
+    "hash": "93f568b28f9e68ba31189c68e2a762b1ad85e3b7bfc7f19487a67587608d7287",
+    "vectorStoreId": "vs_6916899562948191b40ec3d2fba33424",
+    "fileId": "file-22CTSzqUECPK5VG78stfRD"
+  },
+  "Vattel -- The Law of Nations": {
+    "hash": "071cd24449d67f55c00ae274b28fad68d6630633407bc6ee319a659db50ce5e9",
+    "vectorStoreId": "vs_6916899aaf6481918f7d5bc9b0154677",
+    "fileId": "file-KvdAqrDMdJ3bPfUSDtikc4"
+  },
+  "blackstone -- commentaries v1": {
+    "hash": "7bf7b43deaad0007283ae111b037544a50fe98994d843861b2c31c49b1d306ab",
+    "vectorStoreId": "vs_691689a0dec88191a11dde1365a8fd39",
+    "fileId": "file-5g1fakLNTy5ZWKYzfTVpFs"
+  },
+  "blackstone -- commentaries v2": {
+    "hash": "b2069ec897cd879cdf464bcea5b2e881acb816df282afd084a0893b2f759d138",
+    "vectorStoreId": "vs_691689a60bc08191b60adcd7736ec622",
+    "fileId": "file-Vo547uPcBgMHqHys39WLGS"
+  },
+  "blackstone -- commentaries v3": {
+    "hash": "75a157d7762775373fa6f7e93680ff4132f89b0ef9051e04109777068327e4ec",
+    "vectorStoreId": "vs_691689ab18248191b8b960eb1995efe3",
+    "fileId": "file-MNKR81xmNmTK9fAfhVKSvB"
+  },
+  "blackstone -- commentaries v4": {
+    "hash": "7ed94182d0eeee593c6cd60818eb360b1e42298311adf21ecb1505677f057a4c",
+    "vectorStoreId": "vs_691689b036c48191aa37ccd12cdb8250",
+    "fileId": "file-KPd1hKj3poBBcFe9dwtLQn"
+  }
+}

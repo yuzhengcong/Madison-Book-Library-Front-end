@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 
 type Props = {
@@ -11,26 +13,34 @@ const CONTEXT_OPTIONS = [
   "blackstone -- commentaries v1",
   "blackstone -- commentaries v2",
   "blackstone -- commentaries v3",
+  "blackstone -- commentaries v4",
   "De Lolme -- The Constitution of England",
   "Filmer -- The Anarchy of a Limited or Mixed Monarchy",
   "Harrington -- The Commonwealth of Oceana",
-  "Hunt on -- A Treatise of Monarchy",
+  "Hunton -- A Treatise of Monarchy",
   "Locke -- Second Treatise of Government",
+  "Montesquieu -- spirit of laws",
+  "Rousseau -- The Social Contract",
+  "Vattel -- The Law of Nations",
 ];
 
 export default function ChatBar({ value, onChange, onSend, onContextChange }: Props) {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<string[]>([CONTEXT_OPTIONS[0], CONTEXT_OPTIONS[1]]);
+  const [selected, setSelected] = useState<string[]>([]);
 
   const toggleOption = (label: string) => {
-    setSelected((prev) =>
-      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
-    );
+    const next = selected.includes(label)
+      ? selected.filter((l) => l !== label)
+      : [...selected, label];
+    setSelected(next);
+    onContextChange?.(next);
   };
 
   const allSelected = selected.length === CONTEXT_OPTIONS.length;
   const toggleAll = () => {
-    setSelected(allSelected ? [] : [...CONTEXT_OPTIONS]);
+    const next = allSelected ? [] : [...CONTEXT_OPTIONS];
+    setSelected(next);
+    onContextChange?.(next);
   };
 
   const confirm = () => {
