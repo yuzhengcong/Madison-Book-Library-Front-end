@@ -43,7 +43,7 @@ function readCache(): Record<string, { hash: string; vectorStoreId: string; file
 function writeCache(cache: Record<string, { hash: string; vectorStoreId: string; fileId: string }>) {
   try {
     fs.writeFileSync(CACHE_FP, JSON.stringify(cache, null, 2), "utf-8");
-  } catch {}
+  } catch { }
 }
 
 async function waitIndexing(client: any, vectorStoreId: string, timeoutMs = 60_000) {
@@ -53,7 +53,7 @@ async function waitIndexing(client: any, vectorStoreId: string, timeoutMs = 60_0
       const list = await client.vectorStores.files.list(vectorStoreId);
       const allDone = list.data.every((f: any) => f.status === "completed");
       if (allDone) return;
-    } catch {}
+    } catch { }
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
@@ -65,8 +65,8 @@ export async function POST(req: Request) {
     const selectedBooks: string[] = Array.isArray(body?.contexts)
       ? body.contexts
       : Array.isArray(body?.context)
-      ? body.context
-      : [];
+        ? body.context
+        : [];
     const question: string =
       typeof body?.prompt === "string"
         ? body.prompt
@@ -108,7 +108,6 @@ export async function POST(req: Request) {
     }
 
     const client = new OpenAI({ apiKey });
-    const beta: any = (client as any).beta;
 
     // 复用缓存：为每本书维护一个独立向量库，避免每次都重新上传与索引
     const cache = readCache();
@@ -137,60 +136,51 @@ export async function POST(req: Request) {
       vectorStoreIds.push(vs.id);
     }
 
-    // 创建检索型 Assistant（限定在所选书籍的向量库上）
+    // 使用 Responses API 进行检索回答（限定在所选书籍的向量库上）
     if (!vectorStoreIds.length) {
       const msg = "抱歉，未找到所选书籍的向量库，请确认书名与 books/*.txt 一致或先运行预热脚本。";
       return NextResponse.json({ reply: msg });
     }
-    const assistant = await beta.assistants.create({
-      name: "Madison Book QA",
-      instructions:
-        "You are a helpful library assistant. Answer strictly using the provided book files. If the answer is not found in them, say you cannot find it in the selected book(s).",
-      tools: [{ type: "file_search" }],
+    const response = await client.responses.create({
       model: (model || process.env.OPENAI_MODEL || "gpt-4o-mini") as string,
-      tool_resources: { file_search: { vector_store_ids: vectorStoreIds } },
+      input: `When answering the user question, add the exact quote(s) from the context that helped with the asnwer. Output format {"answer":"","qoutes":[]}.\n\nUser question: ${question || ""}`,
+      tools: [
+        {
+          type: "file_search",
+          vector_store_ids: vectorStoreIds,
+        },
+      ],
     });
-
-    // 建立对话线程并提问
-    const thread = await beta.threads.create({ messages: [{ role: "user", content: question || "" }] });
-    let run = await beta.threads.runs.create(thread.id, { assistant_id: assistant.id });
-    const maxWaitMs = 60_000;
-    const start = Date.now();
-    while (run.status !== "completed") {
-      if (Date.now() - start > maxWaitMs) break;
-      await new Promise((r) => setTimeout(r, 1000));
-      run = await beta.threads.runs.retrieve(thread.id, run.id);
-      if (run.status === "failed") {
-        return NextResponse.json({ error: run.last_error?.message || "Run failed" }, { status: 500 });
-      }
-    }
-
-    const msgs = await beta.threads.messages.list(thread.id);
-    const last = msgs.data.find((m: any) => m.role === "assistant");
-    const pieces = last?.content ?? [];
-    let text = pieces
-      .map((c: any) => (c?.type === "text" ? c?.text?.value : ""))
-      .filter(Boolean)
-      .join("\n") || "";
-    text = stripCitationMarkers(text);
-
+    // 解析 Responses API 输出
+    const output = (response as any)?.output ?? [];
+    let text = "";
     const sources: { book: string; fileId: string; quote: string }[] = [];
-    for (const c of pieces) {
-      const annotations = c?.type === "text" ? c?.text?.annotations : undefined;
-      if (Array.isArray(annotations)) {
-        for (const ann of annotations) {
-          if (ann?.type === "file_citation" && ann?.file_citation?.file_id) {
-            const fid = ann.file_citation.file_id as string;
-            const quote = (ann.file_citation.quote as string) || "";
-            let book = "";
-            for (const [bk, meta] of Object.entries(readCache())) {
-              if ((meta as any).fileId === fid) { book = bk; break; }
+    for (const item of output) {
+      if (item?.type === "message") {
+        const content = item?.content ?? [];
+        for (const c of content) {
+          if (c?.type === "output_text") {
+            const t = c?.text ?? "";
+            if (t) text += (text ? "\n" : "") + t;
+            const annotations = c?.annotations ?? [];
+            if (Array.isArray(annotations)) {
+              for (const ann of annotations) {
+                if (ann?.type === "file_citation" && (ann?.file_id || ann?.file_citation?.file_id)) {
+                  const fid = (ann?.file_id || ann?.file_citation?.file_id) as string;
+                  const quote = (ann?.quote || ann?.file_citation?.quote || "") as string;
+                  let book = "";
+                  for (const [bk, meta] of Object.entries(readCache())) {
+                    if ((meta as any).fileId === fid) { book = bk; break; }
+                  }
+                  sources.push({ book: book || "unknown", fileId: fid, quote });
+                }
+              }
             }
-            sources.push({ book: book || "unknown", fileId: fid, quote });
           }
         }
       }
     }
+    // text = stripCitationMarkers(text);
     const uniqueSources = Array.from(new Map(sources.map((s) => [`${s.fileId}:${s.quote}`, s])).values());
 
     if (!text || !text.trim()) {
