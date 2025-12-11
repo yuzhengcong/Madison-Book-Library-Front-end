@@ -50,8 +50,8 @@ export default function ChatBar({ value, onChange, onSend, onContextChange }: Pr
 
   return (
     <div className="w-full relative">
-      {/* 输入栏 */}
-      <div className="rounded-2xl bg-white border border-zinc-300 shadow-sm px-6 py-3 flex items-center justify-between">
+      {/* 输入栏（Gemini风格胶囊） */}
+      <div className="rounded-full bg-white ring-1 ring-zinc-300 shadow px-5 py-3 flex items-center justify-between">
         <input
           className="flex-1 bg-transparent outline-none text-zinc-800 placeholder-zinc-500 text-base"
           placeholder="Message"
@@ -76,12 +76,12 @@ export default function ChatBar({ value, onChange, onSend, onContextChange }: Pr
             </svg>
           </button>
           <button
-            className="h-8 w-8 rounded-full bg-black text-white flex items-center justify-center"
+            className="h-9 w-9 rounded-full bg-black text-white flex items-center justify-center"
             onClick={onSend}
             aria-label="Send"
           >
-            <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
-              <path d="M10 3a.75.75 0 01.75.75v9.5a.75.75 0 01-1.5 0v-9.5A.75.75 0 0110 3zm-4.47 4.47a.75.75 0 011.06 0L10 10.88l3.41-3.41a.75.75 0 111.06 1.06l-3.94 3.94a.75.75 0 01-1.06 0L5.53 8.53a.75.75 0 010-1.06z" />
+            <svg viewBox="0 0 20 20" className="h-5 w-5" fill="currentColor">
+              <path d="M10 4a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H5a1 1 0 110-2h4V5a1 1 0 011-1z" />
             </svg>
           </button>
         </div>

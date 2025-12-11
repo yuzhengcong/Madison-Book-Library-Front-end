@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import OpenAi from "openai";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
@@ -17,6 +17,44 @@ function stripCitationMarkers(s: string) {
     .replace(/[【】]/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+// 尝试从模型文本中解析 {answer, quotes} JSON 负载（兼容常见拼写错误）
+function extractAnswerPayload(raw: string): { answer?: string; quotes?: string[] } {
+  const text = (raw || "").trim();
+  if (!text) return {};
+  // 移除代码块包裹
+  const cleaned = text.replace(/^```\w*\n([\s\S]*?)\n```$/m, "$1").trim();
+  try {
+    const obj = JSON.parse(cleaned);
+    const answer = obj.answer ?? obj.Answer ?? obj.ANSWER;
+    const quotes = obj.quotes ?? obj.qoutes ?? obj.Qoutes ?? obj.QUOTES;
+    return {
+      answer: typeof answer === "string" ? answer : undefined,
+      quotes: Array.isArray(quotes) ? quotes.filter((q: any) => typeof q === "string") : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+// 规范化与模糊匹配：尽量将 JSON 中的 quotes 与注解中的引文对齐
+function normalizeQuote(s: string): string {
+  return stripCitationMarkers(s || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function jaccardSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+  const as = new Set(a.split(" "));
+  const bs = new Set(b.split(" "));
+  let inter = 0;
+  for (const t of as) if (bs.has(t)) inter++;
+  const union = as.size + bs.size - inter;
+  return union ? inter / union : 0;
 }
 
 
@@ -107,7 +145,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ reply: text });
     }
 
-    const client = new OpenAI({ apiKey });
+    const client = new OpenAi({ apiKey });
 
     // 复用缓存：为每本书维护一个独立向量库，避免每次都重新上传与索引
     const cache = readCache();
@@ -136,18 +174,42 @@ export async function POST(req: Request) {
       vectorStoreIds.push(vs.id);
     }
 
-    // 使用 Responses API 进行检索回答（限定在所选书籍的向量库上）
-    if (!vectorStoreIds.length) {
+    // 如果选择了多本书，创建一个聚合向量库，将各书的文件统一加入，避免多库限制
+    let effectiveVectorStoreIds = vectorStoreIds;
+    if (selectedBooks.length > 1) {
+      const fileIds = selectedBooks
+        .map((bk) => (cache[bk]?.fileId || ""))
+        .filter((fid) => fid && typeof fid === "string");
+      if (fileIds.length) {
+        const agg = await client.vectorStores.create({ name: `madison-agg-${Date.now()}` });
+        await client.vectorStores.fileBatches.create(agg.id, { file_ids: fileIds });
+        await waitIndexing(client, agg.id);
+        effectiveVectorStoreIds = [agg.id];
+      }
+    }
+
+    // 基于问题中的实体优先检索匹配书籍（例如问题包含 “de lolme” 时优先用该书的单库）
+    const qLower = (question || "").toLowerCase();
+    const entityMatchedBook = selectedBooks.find((bk) => {
+      const head = bk.split("--")[0].trim().toLowerCase(); // 取书名的前半部分（通常是作者或核心名）
+      return head && qLower.includes(head);
+    });
+    if (entityMatchedBook && cache[entityMatchedBook]?.vectorStoreId) {
+      effectiveVectorStoreIds = [cache[entityMatchedBook].vectorStoreId];
+    }
+
+    // 使用 Responses API 进行检索回答（限定在所选书籍/聚合库的向量库上）
+    if (!effectiveVectorStoreIds.length) {
       const msg = "抱歉，未找到所选书籍的向量库，请确认书名与 books/*.txt 一致或先运行预热脚本。";
       return NextResponse.json({ reply: msg });
     }
     const response = await client.responses.create({
       model: (model || process.env.OPENAI_MODEL || "gpt-4o-mini") as string,
-      input: `When answering the user question, add the exact quote(s) from the context that helped with the asnwer. Output format {"answer":"","qoutes":[]}.\n\nUser question: ${question || ""}`,
+      input: `Answer the user's question using only the selected context. Return a strict JSON object with keys: {"answer": string, "quotes": string[]}. The "quotes" array must include the exact snippet(s) from the context that support the answer. Do not include any text outside of that JSON object.\n\nUser question: ${question || ""}`,
       tools: [
         {
           type: "file_search",
-          vector_store_ids: vectorStoreIds,
+          vector_store_ids: effectiveVectorStoreIds,
         },
       ],
     });
@@ -182,6 +244,71 @@ export async function POST(req: Request) {
     }
     // text = stripCitationMarkers(text);
     const uniqueSources = Array.from(new Map(sources.map((s) => [`${s.fileId}:${s.quote}`, s])).values());
+
+    // 如果模型返回了 JSON 负载，优先采用其中的 answer 与 quotes
+    const parsed = extractAnswerPayload(text);
+    if (parsed?.answer) {
+      text = parsed.answer;
+    }
+    if (parsed?.quotes && parsed.quotes.length > 0) {
+      // 尝试将 quotes 与 citations 对齐（模糊匹配，忽略大小写/标点/空白差异）
+      const normalizedSources = uniqueSources.map((s, i) => ({
+        index: i,
+        norm: normalizeQuote(s.quote || ""),
+        original: s,
+      }));
+      const used = new Set<number>();
+      const merged: { book: string; fileId: string; quote: string }[] = [];
+      // 预先读取所选书籍的规范化全文内容，用于回退匹配
+      const bookNormText: Record<string, string> = {};
+      for (const bk of selectedBooks) {
+        try {
+          const fp = bookFilePath(bk);
+          if (fs.existsSync(fp)) {
+            const raw = fs.readFileSync(fp, "utf-8");
+            bookNormText[bk] = normalizeQuote(stripCitationMarkers(raw));
+          }
+        } catch { }
+      }
+      for (const q of parsed.quotes) {
+        const qnorm = normalizeQuote(q || "");
+        let bestIdx = -1;
+        let bestScore = 0;
+        for (const cand of normalizedSources) {
+          if (used.has(cand.index) || !cand.norm) continue;
+          let score = 0;
+          if (!qnorm) continue;
+          if (cand.norm === qnorm) {
+            score = 1;
+          } else if (cand.norm.includes(qnorm) || qnorm.includes(cand.norm)) {
+            score = 0.95;
+          } else {
+            score = jaccardSimilarity(cand.norm, qnorm);
+          }
+          if (score > bestScore) {
+            bestScore = score;
+            bestIdx = cand.index;
+          }
+        }
+        if (bestIdx >= 0 && bestScore >= 0.5) {
+          used.add(bestIdx);
+          merged.push(uniqueSources[bestIdx]);
+        } else {
+          // 回退：通过全文包含关系尝试定位是哪本书
+          let fallbackBook = "";
+          for (const bk of selectedBooks) {
+            const normText = bookNormText[bk] || "";
+            if (qnorm && normText && normText.includes(qnorm)) {
+              fallbackBook = bk;
+              break;
+            }
+          }
+          merged.push({ book: fallbackBook || (selectedBooks[0] || "unknown"), fileId: "", quote: q });
+        }
+      }
+      // 用 JSON 的 quotes 驱动 sources 列表（保留顺序）
+      uniqueSources.splice(0, uniqueSources.length, ...merged);
+    }
 
     if (!text || !text.trim()) {
       text = selectedBooks.length

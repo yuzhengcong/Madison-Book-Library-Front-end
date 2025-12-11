@@ -30,11 +30,15 @@ const AGE_RANGES = [
 export default function DemographicsModal({ open, onClose, onSubmit }: Props) {
   const [occupation, setOccupation] = useState("");
   const [ageRange, setAgeRange] = useState("");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [consentChecked, setConsentChecked] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setOccupation("");
       setAgeRange("");
+      setStep(1);
+      setConsentChecked(false);
     }
   }, [open]);
 
@@ -46,7 +50,10 @@ export default function DemographicsModal({ open, onClose, onSubmit }: Props) {
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" />
       <div className="absolute inset-0 flex items-center justify-center px-4">
-        <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-xl">
+        <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+          {/* 顶部步骤导航已移除 */}
+
+          {/* 关闭按钮 */}
           <button
             onClick={onClose}
             aria-label="Close"
@@ -57,73 +64,116 @@ export default function DemographicsModal({ open, onClose, onSubmit }: Props) {
             </svg>
           </button>
 
-          <div className="px-6 pt-6 pb-4">
-            <h2 className="text-xl font-semibold text-black">Welcome to Madison Book Library</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Before you begin, we'd like to collect some basic demographic information to better serve our community. This information is anonymous and helps us understand our users.
-            </p>
+          {/* Step 1: Consent */}
+          {step === 1 && (
+            <div className="px-6 pt-6 pb-4">
+              <h2 className="text-2xl font-semibold text-black tracking-tight leading-8">Welcome to the Madison Book Library Chatbot</h2>
+              <p className="mt-3 text-sm text-zinc-700 leading-7 tracking-normal">
+                I'm designed to help you quickly find books, articles, events, and other resources available through the Madison Library. I've learned from librarians, cataloging standards, and trusted information sources across the Madison Library system to give you accurate and helpful guidance.
+              </p>
 
-            <div className="mt-6 space-y-5">
-              <div>
-                <label className="text-sm font-medium text-zinc-700">Occupation / Role</label>
-                <div className="mt-2 relative">
-                  <select
-                    className="w-full appearance-none rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-zinc-800 pr-10"
-                    value={occupation}
-                    onChange={(e) => setOccupation(e.target.value)}
-                  >
-                    <option value="" disabled>
-                      Select your occupation
-                    </option>
-                    {OCCUPATIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
+              <h3 className="mt-6 text-base font-semibold text-black tracking-tight leading-7">Disclaimer</h3>
+              <p className="mt-2 text-sm text-zinc-700 leading-7 tracking-normal">Before proceeding, please read and acknowledge the following:</p>
+              <ul className="mt-3 space-y-3 text-sm text-zinc-700 list-disc pl-5 leading-7 tracking-normal">
+                <li>This chat application is a helpful tool for discovering library materials, but it does not replace assistance from a professional librarian.</li>
+                <li>For detailed research help, account issues, or specialized inquiries, please contact a Madison Library staff member directly.</li>
+                <li>As with any AI tool, the information I provide may not be completely accurate or up-to-date.</li>
+                <li>The Madison Library is not responsible for any actions taken based on the information provided by this chatbot.</li>
+                <li>Questions and answers may be retained to improve this AI model. No private or personally identifying information is stored from your use of this tool.</li>
+              </ul>
+
+              <label className="mt-6 flex items-center gap-3 text-sm text-zinc-800 leading-6 tracking-normal">
+                <input
+                  type="checkbox"
+                  checked={consentChecked}
+                  onChange={(e) => setConsentChecked(e.target.checked)}
+                />
+                <span>I Understand and Agree</span>
+              </label>
+            </div>
+          )}
+
+          {/* Step 2: About You */}
+          {step === 2 && (
+            <div className="px-6 pt-6 pb-4">
+              <h2 className="text-xl font-semibold text-black tracking-tight">Welcome to Madison Book Library</h2>
+              <p className="mt-2 text-sm text-zinc-600 tracking-tight">
+                Before you begin, we'd like to collect some basic demographic information to better serve our community. This information is anonymous and helps us understand our users.
+              </p>
+
+              <div className="mt-6 space-y-5">
+                <div>
+                  <label className="text-sm font-medium text-zinc-700">Occupation / Role</label>
+                  <div className="mt-2 relative">
+                    <select
+                      className="w-full appearance-none rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-zinc-800 pr-10"
+                      value={occupation}
+                      onChange={(e) => setOccupation(e.target.value)}
+                    >
+                      <option value="" disabled>
+                        Select your occupation
                       </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500">
-                    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
-                      <path d="M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.23 3.97a.75.75 0 01-1.04 0L5.25 8.27a.75.75 0 01-.02-1.06z" />
-                    </svg>
-                  </span>
+                      {OCCUPATIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500">
+                      <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
+                        <path d="M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.23 3.97a.75.75 0 01-1.04 0L5.25 8.27a.75.75 0 01-.02-1.06z" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="text-sm font-medium text-zinc-700">Age Range</label>
-                <div className="mt-2 relative">
-                  <select
-                    className="w-full appearance-none rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-zinc-800 pr-10"
-                    value={ageRange}
-                    onChange={(e) => setAgeRange(e.target.value)}
-                  >
-                    <option value="" disabled>
-                      Select your age range
-                    </option>
-                    {AGE_RANGES.map((a) => (
-                      <option key={a.value} value={a.value}>
-                        {a.label}
+                <div>
+                  <label className="text-sm font-medium text-zinc-700">Age Range</label>
+                  <div className="mt-2 relative">
+                    <select
+                      className="w-full appearance-none rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-zinc-800 pr-10"
+                      value={ageRange}
+                      onChange={(e) => setAgeRange(e.target.value)}
+                    >
+                      <option value="" disabled>
+                        Select your age range
                       </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500">
-                    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
-                      <path d="M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.23 3.97a.75.75 0 01-1.04 0L5.25 8.27a.75.75 0 01-.02-1.06z" />
-                    </svg>
-                  </span>
+                      {AGE_RANGES.map((a) => (
+                        <option key={a.value} value={a.value}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500">
+                      <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
+                        <path d="M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.23 3.97a.75.75 0 01-1.04 0L5.25 8.27a.75.75 0 01-.02-1.06z" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
+          {/* 底部按钮区 */}
           <div className="px-6 pb-6">
-            <button
-              onClick={() => canSubmit && onSubmit({ occupation, ageRange })}
-              disabled={!canSubmit}
-              className="w-full rounded-xl bg-zinc-500 text-white px-4 py-3 disabled:opacity-50"
-            >
-              Continue to Library
-            </button>
+            {step === 1 ? (
+              <button
+                onClick={() => consentChecked && setStep(2)}
+                disabled={!consentChecked}
+                className="w-full rounded-xl bg-black text-white px-4 py-3 disabled:opacity-50"
+              >
+                Continue
+              </button>
+            ) : (
+              <button
+                onClick={() => canSubmit && onSubmit({ occupation, ageRange })}
+                disabled={!canSubmit}
+                className="w-full rounded-xl bg-zinc-500 text-white px-4 py-3 disabled:opacity-50"
+              >
+                Continue to Library
+              </button>
+            )}
           </div>
         </div>
       </div>
