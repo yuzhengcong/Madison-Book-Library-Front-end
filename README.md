@@ -4,7 +4,7 @@ This repository contains a development environment for the Madison Book Library 
 
 We tackle this with two different backend versions with a streamlined user interface. Users can specify which books should be scanned or searched, and the retrieved context can optionally be exposed to the end user, allowing them to verify that the cited passages are accurate, relevant, and properly interpreted.
 
-### Traditional RAG using OpenAI’s Responses API:
+### Traditional RAG using OpenAI’s Responses API
 All books are uploaded to OpenAI’s servers, where they are converted into vector embeddings. When a user submits a query, the API performs a similarity-based search over the vector store and retrieves the most relevant passages, which are then used to generate the final response. This approach is the most cost-effective option.
 
 ### Long Context Window Model
