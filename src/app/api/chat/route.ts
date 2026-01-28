@@ -174,9 +174,45 @@ export async function POST(req: Request) {
       vectorStoreIds.push(vs.id);
     }
 
-    // 如果选择了多本书，创建一个聚合向量库，将各书的文件统一加入，避免多库限制
     let effectiveVectorStoreIds = vectorStoreIds;
-    if (selectedBooks.length > 1) {
+    if (selectedBooks.length >= 3) {
+      const booksDir = path.join(process.cwd(), "src", "app", "api", "chat", "books");
+      const allLabels = fs
+        .readdirSync(booksDir)
+        .filter((f) => f.endsWith(".txt"))
+        .map((f) => f.replace(/\.txt$/, ""));
+      const allFileIds: string[] = [];
+      const allHashes: string[] = [];
+      for (const label of allLabels) {
+        const fp = bookFilePath(label);
+        if (!fs.existsSync(fp)) continue;
+        const h = hashFile(fp);
+        allHashes.push(h);
+        const meta = cache[label];
+        if (!meta?.fileId) {
+          const file = await client.files.create({ file: fs.createReadStream(fp), purpose: "assistants" });
+          cache[label] = { hash: h, vectorStoreId: meta?.vectorStoreId || "", fileId: file.id };
+          writeCache(cache);
+          allFileIds.push(file.id);
+        } else {
+          allFileIds.push(meta.fileId);
+        }
+      }
+      if (allFileIds.length) {
+        const combinedHash = crypto.createHash("sha256").update(allHashes.join("|")).digest("hex");
+        const aggMeta = cache["__ALL_AGG__"];
+        if (aggMeta?.hash === combinedHash && aggMeta?.vectorStoreId) {
+          effectiveVectorStoreIds = [aggMeta.vectorStoreId];
+        } else {
+          const agg = await client.vectorStores.create({ name: `madison-agg-all-${Date.now()}` });
+          await client.vectorStores.fileBatches.create(agg.id, { file_ids: allFileIds });
+          await waitIndexing(client, agg.id);
+          cache["__ALL_AGG__"] = { hash: combinedHash, vectorStoreId: agg.id, fileId: "" };
+          writeCache(cache);
+          effectiveVectorStoreIds = [agg.id];
+        }
+      }
+    } else if (selectedBooks.length > 1) {
       const fileIds = selectedBooks
         .map((bk) => (cache[bk]?.fileId || ""))
         .filter((fid) => fid && typeof fid === "string");
@@ -194,7 +230,7 @@ export async function POST(req: Request) {
       const head = bk.split("--")[0].trim().toLowerCase(); // 取书名的前半部分（通常是作者或核心名）
       return head && qLower.includes(head);
     });
-    if (entityMatchedBook && cache[entityMatchedBook]?.vectorStoreId) {
+    if (selectedBooks.length < 3 && entityMatchedBook && cache[entityMatchedBook]?.vectorStoreId) {
       effectiveVectorStoreIds = [cache[entityMatchedBook].vectorStoreId];
     }
 
