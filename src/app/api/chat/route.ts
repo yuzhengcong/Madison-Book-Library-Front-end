@@ -22,7 +22,7 @@ const API_KEY = process.env.OPENAI_API_KEY;
 
 const BOOKS_DIR = "books"; // local folder containing .txt book chunks
 const EXTRACT_MODEL = "google.gemini-2.5-flash"; // model used to extract quotes
-const FINAL_MODEL = "openai.gpt-5"; // model used for the final answer
+const FINAL_MODEL = "openai.gpt-5.1"; // model used for the final answer
 
 // Helper: call external chat completion endpoint and return trimmed text
 async function callChatModel(model: string, messages: any[]) {

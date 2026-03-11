@@ -26,6 +26,12 @@ import { ChatMessage } from "@/components/ChatMessage";
 import React, { useState, useEffect, useRef } from "react";
 import { CONTEXT_OPTIONS } from "@/components/ChatBar";
 
+// Feature flags
+const FEATURES = {
+  ENABLE_ONBOARDING: false,
+  ENABLE_FEEDBACK: true,
+};
+
 type Msg = { role: "user" | "assistant"; content: string; context?: string[]; showContext?: boolean; id?: number };
 
 export default function Home() {
@@ -37,7 +43,7 @@ export default function Home() {
   const intervalRef = useRef<number | null>(null);
   const [placeholderMsgId, setPlaceholderMsgId] = useState<number | null>(null);
   const [lastFeedbackShownCount, setLastFeedbackShownCount] = useState(0);
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(FEATURES.ENABLE_ONBOARDING);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [contexts, setContexts] = useState<string[]>([]);
   const [lastAssistantIndex, setLastAssistantIndex] = useState<number | null>(null);
@@ -159,7 +165,7 @@ export default function Home() {
             {messages.map((m, i) => {
               const isLast = i === messages.length - 1;
               const assistantCount = messages.filter((mm) => mm.role === "assistant").length;
-              const showFeedbackPrompt = isLast && assistantCount > 0 && assistantCount % 3 === 0 && assistantCount !== lastFeedbackShownCount && !showOnboarding;
+              const showFeedbackPrompt = FEATURES.ENABLE_ONBOARDING && isLast && assistantCount > 0 && assistantCount % 3 === 0 && assistantCount !== lastFeedbackShownCount && !showOnboarding;
               const isPlaceholder = m.id !== undefined && placeholderMsgId !== null && m.id === placeholderMsgId;
 
               return (
@@ -200,7 +206,7 @@ export default function Home() {
                         <ChatMessage
                           message={{ id: String(m.id ?? i), role: m.role as any, content: m.content }}
                           isLastAssistantMessage={m.role === "assistant" && isLast}
-                          onOpenFeedback={() => setShowFeedbackModal(true)}
+                          onOpenFeedback={() => setShowFeedbackModal(FEATURES.ENABLE_ONBOARDING)}
                           showFeedbackPrompt={showFeedbackPrompt}
                           onPromptHandled={() => setLastFeedbackShownCount(assistantCount)}
                           onReask={(text: string) => {
